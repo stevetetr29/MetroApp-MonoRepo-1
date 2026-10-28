@@ -14,6 +14,11 @@
     "android": {
       "package": "com.metroapp.mobile"
     },
+    "extra": {
+      "eas": {
+        "projectId": "8be70d73-2d45-458c-995b-4904c3521296"
+      }
+    },
     "plugins": [
       "expo-router",
       [
