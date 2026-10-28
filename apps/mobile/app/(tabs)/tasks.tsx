@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,8 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Camera,
@@ -19,7 +18,6 @@ import {
   Footprints,
   Gift,
   HelpCircle,
-  Image as ImageIcon,
   RefreshCw,
   Sparkles,
   X,
@@ -30,7 +28,6 @@ import {
   RARITY_COLORS,
   type Card,
   type Task,
-  type VerifyTaskResponse,
 } from '@metro/shared';
 import { colors } from '../../lib/theme';
 import { drawBoosterPack } from '../../lib/data';
@@ -39,14 +36,12 @@ import {
   fetchCards,
   fetchTasks,
   grantCards,
-  isTaskCompleted,
   loadCompletions,
   loadStepProgress,
   markTaskCompleted,
   periodKey,
   saveStepProgress,
 } from '../../lib/player';
-import { isSupabaseConfigured, VERIFY_TASK_URL } from '../../lib/supabase';
 
 type TaskTab = 'daily' | 'weekly' | 'rush' | 'monthly';
 
@@ -65,6 +60,7 @@ interface Victory {
 }
 
 export default function TasksScreen() {
+  const router = useRouter();
   const [tab, setTab] = useState<TaskTab>('daily');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
@@ -74,9 +70,7 @@ export default function TasksScreen() {
   // Modals
   const [triviaTask, setTriviaTask] = useState<Task | null>(null);
   const [stepTask, setStepTask] = useState<Task | null>(null);
-  const [photoTask, setPhotoTask] = useState<Task | null>(null);
   const [victory, setVictory] = useState<Victory | null>(null);
-  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const refreshCompletions = useCallback(() => {
     loadCompletions().then(setCompletions);
@@ -88,8 +82,10 @@ export default function TasksScreen() {
       setCards(c);
       setLoading(false);
     });
-    refreshCompletions();
-  }, [refreshCompletions]);
+  }, []);
+
+  // Refresh completion state when returning from the /camera route.
+  useFocusEffect(refreshCompletions);
 
   const filteredTasks = tasks.filter((t) =>
     tab === 'rush'
@@ -134,7 +130,7 @@ export default function TasksScreen() {
     }
     if (task.task_type === 'trivia') setTriviaTask(task);
     else if (task.task_type === 'step_count') setStepTask(task);
-    else setPhotoTask(task);
+    else router.push({ pathname: '/camera', params: { taskId: task.id } });
   };
 
   return (
@@ -249,31 +245,6 @@ export default function TasksScreen() {
           void completeTaskWithPack(task);
         }}
       />
-
-      <PhotoTaskModal
-        task={photoTask}
-        onClose={() => setPhotoTask(null)}
-        onVerified={(task) => {
-          setPhotoTask(null);
-          void completeTaskWithPack(task);
-        }}
-        onFailed={(reason) => setVerifyError(reason)}
-      />
-
-      <Modal visible={verifyError !== null} transparent animationType="fade">
-        <View style={styles.centerBackdrop}>
-          <View style={styles.dialogCard}>
-            <Text style={styles.dialogTitle}>Verification Failed</Text>
-            <Text style={styles.dialogBody}>{verifyError}</Text>
-            <Pressable
-              style={styles.primaryButton}
-              onPress={() => setVerifyError(null)}
-            >
-              <Text style={styles.primaryButtonText}>OK</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
 
       <VictoryModal victory={victory} onClose={() => setVictory(null)} />
     </SafeAreaView>
@@ -423,147 +394,6 @@ function StepTaskModal({
             Progress syncs with your device's step counter when connected.
           </Text>
         </View>
-      </View>
-    </Modal>
-  );
-}
-
-// ── Photo task modal — expo-camera → base64 → Gemini Edge Function ──────────
-
-function PhotoTaskModal({
-  task,
-  onClose,
-  onVerified,
-  onFailed,
-}: {
-  task: Task | null;
-  onClose: () => void;
-  onVerified: (task: Task) => void;
-  onFailed: (reason: string) => void;
-}) {
-  const cameraRef = useRef<CameraView>(null);
-  const [permission, requestPermission] = useCameraPermissions();
-  const [verifying, setVerifying] = useState(false);
-
-  useEffect(() => {
-    if (task && permission && !permission.granted && permission.canAskAgain) {
-      void requestPermission();
-    }
-  }, [task, permission, requestPermission]);
-
-  if (!task) return null;
-
-  const submitPhoto = async (base64: string) => {
-    if (!isSupabaseConfigured) {
-      onFailed(
-        'Verification backend is not configured. Set EXPO_PUBLIC_SUPABASE_URL and deploy the verify-task function.',
-      );
-      return;
-    }
-    setVerifying(true);
-    try {
-      const res = await fetch(VERIFY_TASK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
-        },
-        body: JSON.stringify({
-          imageBase64: base64,
-          taskCriteria: task.ai_prompt_criteria ?? task.description,
-        }),
-      });
-      const json = (await res.json()) as VerifyTaskResponse & { error?: string };
-      if (!res.ok || json.error) {
-        onFailed(json.error ?? `Server error (${res.status}). Please retry.`);
-      } else if (json.verified) {
-        onVerified(task);
-      } else {
-        onFailed(
-          `Gemini didn't verify this photo (${Math.round(json.confidence * 100)}% confidence): ${json.reason}`,
-        );
-      }
-    } catch {
-      onFailed('Network request failed — check your connection and retry.');
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const capture = async () => {
-    try {
-      const photo = await cameraRef.current?.takePictureAsync({
-        base64: true,
-        quality: 0.6,
-      });
-      if (photo?.base64) await submitPhoto(photo.base64);
-    } catch {
-      onFailed('Could not capture photo. Please try again.');
-    }
-  };
-
-  const pickFromLibrary = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        base64: true,
-        quality: 0.6,
-      });
-      const asset = result.canceled ? null : result.assets[0];
-      if (asset?.base64) await submitPhoto(asset.base64);
-    } catch {
-      onFailed('Could not read photo from library.');
-    }
-  };
-
-  return (
-    <Modal visible animationType="slide">
-      <View style={styles.cameraContainer}>
-        {permission?.granted ? (
-          <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
-        ) : (
-          <View style={styles.cameraFallback}>
-            <Camera color={colors.muted} size={48} />
-            <Text style={styles.dialogBody}>
-              Camera permission is required for photo tasks.
-            </Text>
-            <Pressable style={styles.primaryButton} onPress={requestPermission}>
-              <Text style={styles.primaryButtonText}>Grant Camera Access</Text>
-            </Pressable>
-          </View>
-        )}
-
-        <SafeAreaView style={styles.cameraOverlay}>
-          <View style={styles.cameraTop}>
-            <Pressable onPress={onClose} style={styles.cameraClose} hitSlop={12}>
-              <X color="#fff" size={24} />
-            </Pressable>
-            <View style={styles.criteriaBadge}>
-              <Text style={styles.criteriaText} numberOfLines={3}>
-                {task.ai_prompt_criteria ?? task.description}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.cameraBottom}>
-            {verifying ? (
-              <View style={styles.verifyingWrap}>
-                <ActivityIndicator color="#fff" size="large" />
-                <Text style={styles.verifyingText}>Gemini AI Verifying…</Text>
-              </View>
-            ) : (
-              <View style={styles.cameraControls}>
-                <Pressable style={styles.libraryButton} onPress={pickFromLibrary}>
-                  <ImageIcon color="#fff" size={24} />
-                </Pressable>
-                <Pressable style={styles.shutter} onPress={capture}>
-                  <View style={styles.shutterInner} />
-                </Pressable>
-                <View style={styles.libraryButton} />
-              </View>
-            )}
-          </View>
-        </SafeAreaView>
       </View>
     </Modal>
   );
@@ -758,65 +588,6 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: colors.bg, fontWeight: '800', fontSize: 15 },
   finePrint: { color: colors.muted, fontSize: 11, textAlign: 'center' },
-  cameraContainer: { flex: 1, backgroundColor: '#000' },
-  cameraFallback: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    padding: 32,
-  },
-  cameraOverlay: { flex: 1, justifyContent: 'space-between' },
-  cameraTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 16,
-    gap: 12,
-  },
-  cameraClose: {
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 999,
-    padding: 8,
-  },
-  criteriaBadge: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 12,
-    padding: 12,
-  },
-  criteriaText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  cameraBottom: { paddingBottom: 24 },
-  verifyingWrap: { alignItems: 'center', gap: 12, paddingBottom: 24 },
-  verifyingText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  cameraControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 48,
-  },
-  libraryButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutter: {
-    width: 76,
-    height: 76,
-    borderRadius: 999,
-    borderWidth: 5,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutterInner: {
-    width: 58,
-    height: 58,
-    borderRadius: 999,
-    backgroundColor: '#fff',
-  },
   victoryCard: {
     backgroundColor: colors.surface,
     borderRadius: 24,

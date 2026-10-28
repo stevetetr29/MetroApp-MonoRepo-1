@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -8,18 +8,26 @@ import {
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   CheckCircle2,
   LocateFixed,
+  Newspaper,
   Satellite,
   TrainFront,
   X,
 } from 'lucide-react-native';
-import { CITIES, distanceMeters, type City, type Station } from '@metro/shared';
-import { CITY_REGIONS, colors, lineColor } from '../../lib/theme';
+import {
+  CITIES,
+  CITY_SHORT,
+  distanceMeters,
+  type City,
+  type Station,
+} from '@metro/shared';
+import { colors, lineColor } from '../../lib/theme';
+import { StationMap } from '../../components/StationMap';
 import {
   awardXp,
   fetchStations,
@@ -43,7 +51,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 export default function MapScreen() {
-  const mapRef = useRef<MapView>(null);
+  const router = useRouter();
   const [city, setCity] = useState<City>('NYC');
   const [stations, setStations] = useState<Station[]>([]);
   const [checkIns, setCheckIns] = useState<Record<string, string>>({});
@@ -57,18 +65,12 @@ export default function MapScreen() {
     loadCheckIns().then(setCheckIns);
   }, []);
 
-  useEffect(() => {
-    mapRef.current?.animateToRegion(CITY_REGIONS[city], 400);
-    setNearest(null);
-  }, [city]);
-
   const cityStations = stations.filter((s) => s.city === city);
 
   const completeCheckIn = useCallback(async (station: Station, method: 'gps' | 'manual') => {
     await recordCheckIn(station, method);
-    const player = await awardXp(CHECK_IN_XP);
+    await awardXp(CHECK_IN_XP);
     setEarnedXp(CHECK_IN_XP);
-    void player;
     setCheckedInStation(station);
     setCheckIns(await loadCheckIns());
     setSheet('done');
@@ -118,38 +120,36 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        initialRegion={CITY_REGIONS.NYC}
-        userInterfaceStyle="dark"
-      >
-        {cityStations.map((station) => (
-          <Marker
-            key={station.id}
-            coordinate={{ latitude: station.latitude, longitude: station.longitude }}
-            title={station.name}
-            description={station.line_name}
-            pinColor={
-              checkIns[station.id] ? colors.green : lineColor(station.line_name)
-            }
-          />
-        ))}
-      </MapView>
+      <StationMap city={city} stations={stations} checkIns={checkIns} />
 
       <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-        <View style={styles.citySwitcher}>
-          {CITIES.map((c) => (
-            <Pressable
-              key={c}
-              style={[styles.cityPill, c === city && styles.cityPillActive]}
-              onPress={() => setCity(c)}
-            >
-              <Text style={[styles.cityPillText, c === city && styles.cityPillTextActive]}>
-                {c}
-              </Text>
-            </Pressable>
-          ))}
+        <View style={styles.topRow}>
+          <View style={styles.citySwitcher}>
+            {CITIES.map((c) => (
+              <Pressable
+                key={c}
+                style={[styles.cityPill, c === city && styles.cityPillActive]}
+                onPress={() => {
+                  setCity(c);
+                  setNearest(null);
+                }}
+              >
+                <Text
+                  style={[styles.cityPillText, c === city && styles.cityPillTextActive]}
+                >
+                  {CITY_SHORT[c]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable
+            style={styles.socialButton}
+            onPress={() => router.push('/social')}
+            hitSlop={8}
+            accessibilityLabel="Open social feed"
+          >
+            <Newspaper color={colors.text} size={18} />
+          </Pressable>
         </View>
 
         <View style={styles.bottomBar} pointerEvents="box-none">
@@ -269,15 +269,20 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  map: { ...StyleSheet.absoluteFillObject },
   overlay: {
     flex: 1,
     justifyContent: 'space-between',
   },
-  citySwitcher: {
+  topRow: {
     flexDirection: 'row',
-    alignSelf: 'center',
+    alignItems: 'center',
     marginTop: 8,
+    marginHorizontal: 16,
+    gap: 10,
+  },
+  citySwitcher: {
+    flex: 1,
+    flexDirection: 'row',
     backgroundColor: 'rgba(11,16,32,0.85)',
     borderRadius: 999,
     padding: 4,
@@ -285,13 +290,24 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   cityPill: {
-    paddingHorizontal: 16,
+    flex: 1,
+    alignItems: 'center',
     paddingVertical: 8,
     borderRadius: 999,
   },
   cityPillActive: { backgroundColor: colors.accent },
   cityPillText: { color: colors.muted, fontWeight: '600', fontSize: 13 },
   cityPillTextActive: { color: colors.bg },
+  socialButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: 'rgba(11,16,32,0.85)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   bottomBar: {
     margin: 16,
     padding: 16,

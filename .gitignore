@@ -48,3 +48,4 @@ next-env.d.ts
 
 # Testing
 coverage/
+expo-env.d.ts

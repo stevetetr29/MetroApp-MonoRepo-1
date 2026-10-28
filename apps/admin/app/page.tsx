@@ -10,7 +10,7 @@ interface Stats {
   players: number | null;
   stationsNyc: number | null;
   stationsShanghai: number | null;
-  stationsGeneric: number | null;
+  stationsRow: number | null;
   activeTasks: number | null;
   redeemedCodes: number | null;
 }
@@ -20,7 +20,7 @@ export default function DashboardPage() {
     players: null,
     stationsNyc: null,
     stationsShanghai: null,
-    stationsGeneric: null,
+    stationsRow: null,
     activeTasks: null,
     redeemedCodes: null,
   });
@@ -33,7 +33,7 @@ export default function DashboardPage() {
         countRows('profiles'),
         countRows('stations', { column: 'city', value: 'NYC' }),
         countRows('stations', { column: 'city', value: 'Shanghai' }),
-        countRows('stations', { column: 'city', value: 'Generic' }),
+        countRows('stations', { column: 'city', value: 'Rest of the World' }),
         countRows('tasks', { column: 'is_active', value: true }),
         countRows('promo_codes', { column: 'is_redeemed', value: true }),
       ]);
@@ -41,7 +41,7 @@ export default function DashboardPage() {
         players,
         stationsNyc: nyc,
         stationsShanghai: sh,
-        stationsGeneric: gn,
+        stationsRow: gn,
         activeTasks: tasks,
         redeemedCodes: redeemed,
       });
@@ -63,12 +63,12 @@ export default function DashboardPage() {
     {
       title: 'Total Stations',
       value: fmt(
-        stats.stationsNyc !== null && stats.stationsShanghai !== null && stats.stationsGeneric !== null
-          ? stats.stationsNyc + stats.stationsShanghai + stats.stationsGeneric
+        stats.stationsNyc !== null && stats.stationsShanghai !== null && stats.stationsRow !== null
+          ? stats.stationsNyc + stats.stationsShanghai + stats.stationsRow
           : null,
       ),
       icon: MapPin,
-      note: `NYC ${fmt(stats.stationsNyc)} · SH ${fmt(stats.stationsShanghai)} · GEN ${fmt(stats.stationsGeneric)}`,
+      note: `NYC ${fmt(stats.stationsNyc)} · SH ${fmt(stats.stationsShanghai)} · ROW ${fmt(stats.stationsRow)}`,
     },
     { title: 'Active Tasks', value: fmt(stats.activeTasks), icon: ListChecks, note: 'daily / weekly / monthly' },
     { title: 'Codes Redeemed', value: fmt(stats.redeemedCodes), icon: TicketCheck, note: 'scratch-off physical packs' },

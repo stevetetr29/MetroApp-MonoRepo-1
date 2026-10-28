@@ -1,16 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Crown, ShieldCheck, Swords, TrendingUp } from 'lucide-react-native';
-import { CITIES, type City, type LineStanding } from '@metro/shared';
-import { colors, lineColor } from '../../lib/theme';
+import {
+  CalendarClock,
+  Crown,
+  ShieldCheck,
+  Swords,
+  TrendingUp,
+  Zap,
+} from 'lucide-react-native';
+import {
+  CITIES,
+  CITY_SHORT,
+  LINE_COLORS,
+  LINE_EVENTS,
+  type City,
+  type LineStanding,
+} from '@metro/shared';
+import { colors } from '../../lib/theme';
 import { FACTION_BASE_XP, FACTIONS } from '../../lib/data';
 import { loadPlayer, savePlayer } from '../../lib/player';
 import { getSessionUserId, supabase } from '../../lib/supabase';
@@ -86,67 +100,136 @@ export default function LineWarsScreen() {
   };
 
   const maxXp = Math.max(...standings.map((s) => s.weekly_xp), 1);
+  const myStanding = standings.find((s) => s.line_name === myLine);
+  const events = LINE_EVENTS.filter((e) => e.city === city);
+  const lineColorFor = (line: string) => LINE_COLORS[line] ?? colors.accent;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.titleRow}>
-          <Swords color={colors.red} size={26} />
-          <Text style={styles.heading}>Line Wars</Text>
-        </View>
-        <Text style={styles.subheading}>
-          Pick your line. Every XP you earn this week counts for your faction.
-        </Text>
+      <FlatList
+        data={standings}
+        keyExtractor={(s) => s.line_name}
+        contentContainerStyle={styles.scroll}
+        ListHeaderComponent={
+          <>
+            <View style={styles.titleRow}>
+              <Swords color={colors.red} size={26} />
+              <Text style={styles.heading}>Line Wars</Text>
+            </View>
+            <Text style={styles.subheading}>
+              Pick your line. Every XP you earn this week counts for your faction.
+            </Text>
 
-        <View style={styles.citySwitcher}>
-          {CITIES.map((c) => (
-            <Pressable
-              key={c}
-              style={[styles.cityPill, c === city && styles.cityPillActive]}
-              onPress={() => {
-                setCity(c);
-                setLoading(true);
-                void loadPlayer().then((p) =>
-                  loadStandings(c, p.primary_line, p.total_xp),
-                );
-              }}
-            >
-              <Text
-                style={[styles.cityPillText, c === city && styles.cityPillTextActive]}
-              >
-                {c}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+            <View style={styles.citySwitcher}>
+              {CITIES.map((c) => (
+                <Pressable
+                  key={c}
+                  style={[styles.cityPill, c === city && styles.cityPillActive]}
+                  onPress={() => {
+                    setCity(c);
+                    setLoading(true);
+                    void loadPlayer().then((p) =>
+                      loadStandings(c, p.primary_line, p.total_xp),
+                    );
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.cityPillText,
+                      c === city && styles.cityPillTextActive,
+                    ]}
+                  >
+                    {CITY_SHORT[c]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
-        {loading ? (
-          <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
-        ) : (
-          standings.map((standing) => {
-            const isMine = standing.line_name === myLine;
-            const isLeader = standing.rank === 1;
-            const pct = standing.weekly_xp / maxXp;
-            return (
+            {myStanding && (
               <View
-                key={standing.line_name}
                 style={[
-                  styles.factionCard,
-                  isMine && { borderColor: colors.accent },
+                  styles.factionBanner,
+                  { borderColor: lineColorFor(myLine) },
                 ]}
               >
-                <View style={styles.factionHeader}>
-                  <View style={styles.factionTitleWrap}>
-                    {isLeader && <Crown color={colors.gold} size={20} />}
-                    <Text style={styles.factionName}>{standing.line_name}</Text>
-                    {isMine && (
-                      <View style={styles.yourBadge}>
-                        <ShieldCheck color={colors.accent} size={12} />
-                        <Text style={styles.yourBadgeText}>YOUR LINE</Text>
-                      </View>
+                <ShieldCheck color={lineColorFor(myLine)} size={28} />
+                <View style={styles.factionBannerText}>
+                  <Text style={styles.factionBannerTitle}>
+                    Active Faction: {myLine}
+                  </Text>
+                  <Text style={styles.factionBannerSub}>
+                    Rank #{myStanding.rank} ·{' '}
+                    {myStanding.weekly_xp.toLocaleString()} weekly XP (your XP
+                    counts toward this)
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.eventsHeader}>
+              <CalendarClock color={colors.gold} size={18} />
+              <Text style={styles.sectionTitle}>Active Line Events</Text>
+            </View>
+            {events.map((event) => {
+              const applies = event.lines.length === 0 || event.lines.includes(myLine);
+              return (
+                <View key={event.id} style={styles.eventCard}>
+                  <View style={styles.eventTop}>
+                    <Text style={styles.eventTitle}>{event.title}</Text>
+                    <View style={styles.bonusBadge}>
+                      <Zap color={colors.bg} size={11} />
+                      <Text style={styles.bonusText}>{event.bonus_label}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.eventDesc}>{event.description}</Text>
+                  <View style={styles.eventMeta}>
+                    {event.lines.length > 0 && (
+                      <Text style={styles.eventLines}>
+                        {event.lines.join(' · ')}
+                      </Text>
+                    )}
+                    <Text style={styles.eventEnds}>{event.ends_label}</Text>
+                    {applies && myLine !== '' && (
+                      <Text style={styles.eventApplies}>Applies to your line</Text>
                     )}
                   </View>
-                  <Text style={styles.factionRank}>#{standing.rank}</Text>
+                </View>
+              );
+            })}
+
+            <Text style={styles.sectionTitle}>Weekly Standings</Text>
+            {loading && (
+              <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} />
+            )}
+          </>
+        }
+        renderItem={({ item }) => {
+          const isMine = item.line_name === myLine;
+          const isLeader = item.rank === 1;
+          const pct = item.weekly_xp / maxXp;
+          return (
+            <View
+              style={[
+                styles.factionRow,
+                isMine && { borderColor: lineColorFor(item.line_name) },
+              ]}
+            >
+              <View style={styles.rankWrap}>
+                {isLeader ? (
+                  <Crown color={colors.gold} size={16} />
+                ) : (
+                  <Text style={styles.rankText}>{item.rank}</Text>
+                )}
+              </View>
+              <View style={styles.factionBody}>
+                <View style={styles.factionTop}>
+                  <Text style={styles.factionName}>
+                    {item.line_name}
+                    {isMine ? '  ·  your line' : ''}
+                  </Text>
+                  <Text style={styles.factionXp}>
+                    {item.weekly_xp.toLocaleString()} XP
+                  </Text>
                 </View>
                 <View style={styles.barTrack}>
                   <View
@@ -156,38 +239,32 @@ export default function LineWarsScreen() {
                         flex: Math.max(pct, 0.03),
                         backgroundColor: isLeader
                           ? colors.gold
-                          : lineColor(standing.line_name),
+                          : lineColorFor(item.line_name),
                       },
                     ]}
                   />
                   <View style={{ flex: 1 - Math.max(pct, 0.03) }} />
                 </View>
-                <View style={styles.factionFooter}>
-                  <View style={styles.xpWrap}>
-                    <TrendingUp color={colors.muted} size={14} />
-                    <Text style={styles.xpText}>
-                      {standing.weekly_xp.toLocaleString()} weekly XP
-                    </Text>
-                  </View>
-                  {!isMine && (
-                    <Pressable
-                      style={styles.joinButton}
-                      onPress={() => void joinLine(standing.line_name)}
-                    >
-                      <Text style={styles.joinButtonText}>Join</Text>
-                    </Pressable>
-                  )}
-                </View>
               </View>
-            );
-          })
-        )}
-
-        <Text style={styles.footerNote}>
-          Weekly standings reset every Monday. Earn XP from check-ins, tasks and
-          trivia to push your line to the crown.
-        </Text>
-      </ScrollView>
+              {!isMine && (
+                <Pressable
+                  style={styles.joinButton}
+                  onPress={() => void joinLine(item.line_name)}
+                >
+                  <Text style={styles.joinButtonText}>Join</Text>
+                </Pressable>
+              )}
+            </View>
+          );
+        }}
+        ListFooterComponent={
+          <Text style={styles.footerNote}>
+            <TrendingUp color={colors.muted} size={12} /> Weekly standings reset
+            every Monday. Earn XP from check-ins, tasks and trivia to push your
+            line to the crown.
+          </Text>
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -201,7 +278,7 @@ const styles = StyleSheet.create({
   citySwitcher: {
     flexDirection: 'row',
     marginTop: 18,
-    marginBottom: 18,
+    marginBottom: 16,
     backgroundColor: colors.surface,
     borderRadius: 999,
     padding: 4,
@@ -212,54 +289,92 @@ const styles = StyleSheet.create({
   cityPillActive: { backgroundColor: colors.accent },
   cityPillText: { color: colors.muted, fontWeight: '700', fontSize: 13 },
   cityPillTextActive: { color: colors.bg },
-  factionCard: {
+  factionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     backgroundColor: colors.surface,
-    borderRadius: 18,
+    borderRadius: 16,
+    borderWidth: 2,
+    padding: 14,
+    marginBottom: 18,
+  },
+  factionBannerText: { flex: 1, gap: 3 },
+  factionBannerTitle: { color: colors.text, fontSize: 15, fontWeight: '900' },
+  factionBannerSub: { color: colors.muted, fontSize: 11, lineHeight: 16 },
+  eventsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '900', marginBottom: 10, marginTop: 4 },
+  eventCard: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 16,
-    marginBottom: 14,
-    gap: 12,
+    padding: 14,
+    marginBottom: 10,
+    gap: 6,
   },
-  factionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  factionTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  factionName: { color: colors.text, fontSize: 17, fontWeight: '900' },
-  factionRank: { color: colors.muted, fontWeight: '800', fontSize: 14 },
-  yourBadge: {
+  eventTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  eventTitle: { color: colors.text, fontSize: 14, fontWeight: '800', flex: 1 },
+  bonusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderWidth: 1,
-    borderColor: colors.accent,
+    backgroundColor: colors.gold,
     borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    marginLeft: 8,
   },
-  yourBadgeText: { color: colors.accent, fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  bonusText: { color: colors.bg, fontSize: 10, fontWeight: '900' },
+  eventDesc: { color: colors.muted, fontSize: 12, lineHeight: 17 },
+  eventMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2, flexWrap: 'wrap' },
+  eventLines: { color: colors.accent, fontSize: 11, fontWeight: '700' },
+  eventEnds: { color: colors.muted, fontSize: 11 },
+  eventApplies: { color: colors.green, fontSize: 11, fontWeight: '700' },
+  factionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  rankWrap: { width: 22, alignItems: 'center' },
+  rankText: { color: colors.muted, fontWeight: '800', fontSize: 13 },
+  factionBody: { flex: 1, gap: 6 },
+  factionTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  factionName: { color: colors.text, fontSize: 14, fontWeight: '800' },
+  factionXp: { color: colors.muted, fontSize: 11, fontWeight: '700' },
   barTrack: {
     flexDirection: 'row',
-    height: 12,
+    height: 8,
     borderRadius: 999,
     backgroundColor: colors.surfaceAlt,
     overflow: 'hidden',
   },
   barFill: { borderRadius: 999 },
-  factionFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  xpWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  xpText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   joinButton: {
     borderWidth: 1,
     borderColor: colors.accent,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
-  joinButtonText: { color: colors.accent, fontWeight: '800', fontSize: 12 },
+  joinButtonText: { color: colors.accent, fontWeight: '800', fontSize: 11 },
   footerNote: {
     color: colors.muted,
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
-    marginTop: 8,
+    marginTop: 12,
   },
 });

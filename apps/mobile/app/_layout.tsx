@@ -13,6 +13,8 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="camera" options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="social" />
       </Stack>
     </>
   );

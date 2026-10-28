@@ -106,7 +106,7 @@ export default function StationsPage() {
         <div>
           <h1 className="text-2xl font-bold">Station Manager</h1>
           <p className="text-sm text-muted-foreground">
-            Add and edit metro stations for NYC, Shanghai, and Generic maps.
+            Add and edit metro stations for NYC, Shanghai, and Rest of the World maps.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()}>

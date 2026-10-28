@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
-  FlatList,
+  Image,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Bell,
   BellRing,
+  Crown,
+  Flame,
+  Ghost,
   Lock,
   ScanLine,
   Shield,
@@ -23,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import { RARITY_COLORS, type Card } from '@metro/shared';
 import { colors } from '../../lib/theme';
+import { CHAMPION_NAMES } from '../../lib/data';
 import {
   fetchCards,
   grantCards,
@@ -33,6 +38,23 @@ import {
 import { getSessionUserId, isSupabaseConfigured, supabase } from '../../lib/supabase';
 
 const CODE_PATTERN = /^[A-Z0-9]{8}$/;
+
+/** Per-champion accent + icon for the hero silhouette. */
+const CHAMPION_THEME: Record<
+  string,
+  { color: string; icon: typeof Flame }
+> = {
+  'Grand Central Dragon': { color: '#F59E0B', icon: Flame },
+  'The Maglev Empress': { color: '#38BDF8', icon: Crown },
+  'Express Phantom': { color: '#A855F7', icon: Ghost },
+};
+
+interface ChampionGroup {
+  name: string;
+  championCard: Card | undefined;
+  members: Card[];
+  unlocked: boolean;
+}
 
 export default function BinderScreen() {
   const [cards, setCards] = useState<Card[]>([]);
@@ -53,6 +75,17 @@ export default function BinderScreen() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  const groups: ChampionGroup[] = CHAMPION_NAMES.map((name) => {
+    const members = cards.filter((c) => c.champion === name && c.name !== name);
+    const championCard = cards.find((c) => c.name === name);
+    return {
+      name,
+      championCard,
+      members,
+      unlocked: championCard ? ownedIds.includes(championCard.id) : false,
+    };
+  });
 
   const redeem = async () => {
     const normalized = code.trim().toUpperCase();
@@ -123,79 +156,44 @@ export default function BinderScreen() {
         </Pressable>
       </View>
 
-      <FlatList
-        data={cards}
-        keyExtractor={(c) => c.id}
-        numColumns={2}
-        columnWrapperStyle={styles.gridRow}
-        contentContainerStyle={styles.grid}
-        ListFooterComponent={
-          <View style={styles.arCard}>
-            <ScanLine color={colors.accent} size={32} />
-            <Text style={styles.arTitle}>AR Card Scanner</Text>
-            <Text style={styles.arSubtitle}>
-              Coming Soon — point your camera at a physical card to summon its
-              digital twin.
-            </Text>
-            <Pressable
-              style={[styles.notifyButton, arNotify && styles.notifyButtonOn]}
-              onPress={toggleArNotify}
-            >
-              {arNotify ? (
-                <BellRing color={colors.bg} size={16} />
-              ) : (
-                <Bell color={colors.text} size={16} />
-              )}
-              <Text
-                style={[styles.notifyText, arNotify && styles.notifyTextOn]}
-              >
-                {arNotify ? "We'll notify you" : 'Notify Me'}
-              </Text>
-            </Pressable>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const owned = ownedIds.includes(item.id);
-          const rarityColor = RARITY_COLORS[item.rarity];
-          return (
-            <View
-              style={[
-                styles.cardTile,
-                { borderColor: owned ? rarityColor : colors.border },
-                !owned && styles.cardTileLocked,
-              ]}
-            >
-              {owned ? (
-                <>
-                  <Sparkles color={rarityColor} size={26} />
-                  <Text style={styles.cardName} numberOfLines={2}>
-                    {item.name}
-                  </Text>
-                  <Text style={[styles.cardRarity, { color: rarityColor }]}>
-                    {item.rarity}
-                  </Text>
-                  <View style={styles.statRow}>
-                    <View style={styles.statBadge}>
-                      <Sword color={colors.red} size={11} />
-                      <Text style={styles.statText}>{item.attack}</Text>
-                    </View>
-                    <View style={styles.statBadge}>
-                      <Shield color={colors.accent} size={11} />
-                      <Text style={styles.statText}>{item.defense}</Text>
-                    </View>
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Lock color={colors.muted} size={26} />
-                  <Text style={styles.cardNameLocked}>???</Text>
-                  <Text style={styles.cardLockedHint}>Locked</Text>
-                </>
-              )}
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {groups.map((group) => (
+          <View key={group.name} style={styles.championSection}>
+            <ChampionHero group={group} onRedeem={() => setRedeemOpen(true)} />
+            <View style={styles.subGrid}>
+              {group.members.map((card) => (
+                <SubCard
+                  key={card.id}
+                  card={card}
+                  owned={ownedIds.includes(card.id)}
+                />
+              ))}
             </View>
-          );
-        }}
-      />
+          </View>
+        ))}
+
+        <View style={styles.arCard}>
+          <ScanLine color={colors.accent} size={32} />
+          <Text style={styles.arTitle}>AR Card Scanner</Text>
+          <Text style={styles.arSubtitle}>
+            Coming Soon — point your camera at a physical card to summon its
+            digital twin.
+          </Text>
+          <Pressable
+            style={[styles.notifyButton, arNotify && styles.notifyButtonOn]}
+            onPress={toggleArNotify}
+          >
+            {arNotify ? (
+              <BellRing color={colors.bg} size={16} />
+            ) : (
+              <Bell color={colors.text} size={16} />
+            )}
+            <Text style={[styles.notifyText, arNotify && styles.notifyTextOn]}>
+              {arNotify ? "We'll notify you" : 'Notify Me'}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
 
       <Modal visible={redeemOpen} transparent animationType="slide">
         <View style={styles.backdrop}>
@@ -235,6 +233,130 @@ export default function BinderScreen() {
   );
 }
 
+// ── Champion hero card — colored when owned, silhouette when locked ──────────
+
+function ChampionHero({
+  group,
+  onRedeem,
+}: {
+  group: ChampionGroup;
+  onRedeem: () => void;
+}) {
+  const theme = CHAMPION_THEME[group.name] ?? { color: colors.accent, icon: Ghost };
+  const Icon = theme.icon;
+  const card = group.championCard;
+
+  return (
+    <View
+      style={[
+        styles.heroCard,
+        { borderColor: group.unlocked ? theme.color : colors.border },
+      ]}
+    >
+      {/* Artwork — real image when artwork_url exists, icon stand-in otherwise.
+          Locked champions render as a black silhouette (tintColor / opacity). */}
+      <View style={styles.heroArt}>
+        {card?.artwork_url ? (
+          <Image
+            source={{ uri: card.artwork_url }}
+            style={styles.heroImage}
+            tintColor={group.unlocked ? undefined : '#000000'}
+            resizeMode="cover"
+          />
+        ) : (
+          <Icon
+            color={group.unlocked ? theme.color : '#000000'}
+            size={64}
+            style={!group.unlocked ? { opacity: 0.5 } : undefined}
+          />
+        )}
+        {!group.unlocked && <View style={styles.heroVeil} />}
+        {!group.unlocked && (
+          <View style={styles.heroLockOverlay}>
+            <Lock color={colors.muted} size={18} />
+            <Text style={styles.heroLockText}>Unlock via physical cards</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.heroMeta}>
+        <Text style={styles.heroName}>{group.unlocked ? group.name : '???'}</Text>
+        {card && (
+          <Text style={[styles.heroRarity, { color: RARITY_COLORS[card.rarity] }]}>
+            {card.rarity} Champion
+          </Text>
+        )}
+        {group.unlocked && card ? (
+          <Text style={styles.heroDesc} numberOfLines={3}>
+            {card.description}
+          </Text>
+        ) : null}
+        {group.unlocked && card && (
+          <View style={styles.statRow}>
+            <View style={styles.statBadge}>
+              <Sword color={colors.red} size={12} />
+              <Text style={styles.statText}>{card.attack}</Text>
+            </View>
+            <View style={styles.statBadge}>
+              <Shield color={colors.accent} size={12} />
+              <Text style={styles.statText}>{card.defense}</Text>
+            </View>
+          </View>
+        )}
+        {!group.unlocked && (
+          <Pressable style={styles.heroRedeem} onPress={onRedeem}>
+            <Ticket color={colors.bg} size={14} />
+            <Text style={styles.heroRedeemText}>Redeem Scratch Code</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ── Set sub-card (collectible beneath each champion) ─────────────────────────
+
+function SubCard({ card, owned }: { card: Card; owned: boolean }) {
+  const rarityColor = RARITY_COLORS[card.rarity];
+  return (
+    <View
+      style={[
+        styles.subCard,
+        { borderColor: owned ? rarityColor : colors.border },
+        !owned && styles.subCardLocked,
+      ]}
+    >
+      {owned ? (
+        <>
+          <Sparkles color={rarityColor} size={18} />
+          <Text style={styles.subCardName} numberOfLines={2}>
+            {card.name}
+          </Text>
+          <Text style={[styles.subCardRarity, { color: rarityColor }]}>
+            {card.rarity}
+          </Text>
+          <View style={styles.subStatRow}>
+            <View style={styles.statBadge}>
+              <Sword color={colors.red} size={10} />
+              <Text style={styles.subStatText}>{card.attack}</Text>
+            </View>
+            <View style={styles.statBadge}>
+              <Shield color={colors.accent} size={10} />
+              <Text style={styles.subStatText}>{card.defense}</Text>
+            </View>
+          </View>
+        </>
+      ) : (
+        <>
+          <Lock color={colors.muted} size={18} />
+          <Text style={styles.subCardNameLocked}>???</Text>
+          <Text style={styles.subCardLockedHint}>{card.rarity}</Text>
+        </>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: {
@@ -257,30 +379,47 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   redeemButtonText: { color: colors.bg, fontWeight: '800', fontSize: 12 },
-  grid: { paddingHorizontal: 16, paddingBottom: 32 },
-  gridRow: { gap: 12, marginBottom: 12 },
-  cardTile: {
-    flex: 1,
+  scroll: { paddingHorizontal: 16, paddingBottom: 32, gap: 20 },
+  championSection: { gap: 10 },
+  heroCard: {
+    flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 2,
-    padding: 14,
-    minHeight: 168,
+    overflow: 'hidden',
+  },
+  heroArt: {
+    width: 132,
+    minHeight: 150,
+    backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
   },
-  cardTileLocked: { borderStyle: 'dashed' },
-  cardName: {
-    color: colors.text,
-    fontWeight: '800',
-    fontSize: 14,
-    textAlign: 'center',
+  heroImage: { width: '100%', height: '100%' },
+  heroVeil: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  cardRarity: { fontWeight: '900', fontSize: 11, letterSpacing: 0.5 },
-  cardNameLocked: { color: colors.muted, fontWeight: '800', fontSize: 14 },
-  cardLockedHint: { color: colors.muted, fontSize: 11 },
-  statRow: { flexDirection: 'row', gap: 8 },
+  heroLockOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    left: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  heroLockText: { color: colors.muted, fontSize: 9, fontWeight: '700', flexShrink: 1 },
+  heroMeta: { flex: 1, padding: 14, gap: 6 },
+  heroName: { color: colors.text, fontSize: 17, fontWeight: '900' },
+  heroRarity: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  heroDesc: { color: colors.muted, fontSize: 12, lineHeight: 17 },
+  statRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   statBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -291,8 +430,44 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statText: { color: colors.text, fontWeight: '800', fontSize: 11 },
+  heroRedeem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: colors.gold,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  heroRedeemText: { color: colors.bg, fontWeight: '800', fontSize: 11 },
+  subGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  subCard: {
+    width: '31.5%',
+    minHeight: 118,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 2,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+  },
+  subCardLocked: { borderStyle: 'dashed', opacity: 0.75 },
+  subCardName: {
+    color: colors.text,
+    fontWeight: '800',
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  subCardRarity: { fontWeight: '900', fontSize: 9, letterSpacing: 0.5 },
+  subStatRow: { flexDirection: 'row', gap: 5 },
+  subStatText: { color: colors.text, fontWeight: '800', fontSize: 9 },
+  subCardNameLocked: { color: colors.muted, fontWeight: '800', fontSize: 12 },
+  subCardLockedHint: { color: colors.muted, fontSize: 9 },
   arCard: {
-    marginTop: 8,
+    marginTop: 4,
     backgroundColor: colors.surfaceAlt,
     borderRadius: 20,
     borderWidth: 1,

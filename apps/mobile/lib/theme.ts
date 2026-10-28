@@ -45,7 +45,7 @@ export const CITY_REGIONS: Record<
     latitudeDelta: 0.16,
     longitudeDelta: 0.16,
   },
-  Generic: {
+  'Rest of the World': {
     latitude: 40.0,
     longitude: -74.0,
     latitudeDelta: 0.08,
