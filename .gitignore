@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Turborepo
+.turbo/
+
+# Builds
+dist/
+build/
+.next/
+out/
+
+# Expo
+.expo/
+.expo-shared/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Env — never commit secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# OS / editor
+.DS_Store
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+coverage/

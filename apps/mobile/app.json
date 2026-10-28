@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "MetroApp",
+    "slug": "metroapp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "metroapp",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B1020",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.metroapp.mobile"
+    },
+    "android": {
+      "package": "com.metroapp.mobile"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "MetroApp uses your location to check in at metro stations."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "MetroApp uses the camera to photograph and verify game tasks."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "MetroApp lets you submit photos for task verification."
+        }
+      ]
+    ]
+  }
+}
