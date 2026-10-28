@@ -24,8 +24,15 @@ import {
   Sword,
   Ticket,
   X,
+  Zap,
 } from 'lucide-react-native';
-import { RARITY_COLORS, type Card } from '@metro/shared';
+import {
+  PHYSICAL_ONLY_RARITIES,
+  RARITY_COLORS,
+  XP_UNLOCKABLE_RARITIES,
+  XP_UNLOCK_COST,
+  type Card,
+} from '@metro/shared';
 import { colors } from '../../lib/theme';
 import { CHAMPION_NAMES } from '../../lib/data';
 import {
@@ -33,7 +40,9 @@ import {
   grantCards,
   loadArNotify,
   loadOwnedCardIds,
+  loadPlayer,
   saveArNotify,
+  spendXp,
 } from '../../lib/player';
 import { getSessionUserId, isSupabaseConfigured, supabase } from '../../lib/supabase';
 
@@ -63,6 +72,7 @@ export default function BinderScreen() {
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [code, setCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
+  const [playerXp, setPlayerXp] = useState(0);
 
   const refresh = useCallback(() => {
     Promise.all([fetchCards(), loadOwnedCardIds()]).then(([catalog, owned]) => {
@@ -70,6 +80,7 @@ export default function BinderScreen() {
       setOwnedIds(owned);
     });
     loadArNotify().then(setArNotify);
+    loadPlayer().then((p) => setPlayerXp(p.total_xp));
   }, []);
 
   useEffect(() => {
@@ -135,6 +146,35 @@ export default function BinderScreen() {
     }
   };
 
+  /**
+   * Common / Rare / Epic cards unlock with XP (events, roulette, surprise
+   * packages all funnel XP into the same pool). Super Rare / Legendary stay
+   * physical-scratch-code exclusives.
+   */
+  const unlockWithXp = async (card: Card) => {
+    const cost = XP_UNLOCK_COST[card.rarity] ?? 0;
+    const updated = await spendXp(cost);
+    if (!updated) {
+      Alert.alert(
+        'Not enough XP',
+        `Unlocking a ${card.rarity} card costs ${cost} XP — you have ${playerXp}. Earn more from check-ins, tasks and Line Wars events.`,
+      );
+      return;
+    }
+    await grantCards([card.id]);
+    setPlayerXp(updated.total_xp);
+    setOwnedIds(await loadOwnedCardIds());
+    Alert.alert('Card unlocked!', `${card.name} (${card.rarity}) added to your binder.`);
+  };
+
+  const onLockedCardPress = (card: Card) => {
+    if (XP_UNLOCKABLE_RARITIES.includes(card.rarity)) {
+      void unlockWithXp(card);
+    } else if (PHYSICAL_ONLY_RARITIES.includes(card.rarity)) {
+      setRedeemOpen(true);
+    }
+  };
+
   const toggleArNotify = async () => {
     const next = !arNotify;
     setArNotify(next);
@@ -147,7 +187,7 @@ export default function BinderScreen() {
         <View>
           <Text style={styles.heading}>Card Binder</Text>
           <Text style={styles.subheading}>
-            {ownedIds.length} / {cards.length} digital twins collected
+            {ownedIds.length} / {cards.length} digital twins · {playerXp.toLocaleString()} XP
           </Text>
         </View>
         <Pressable style={styles.redeemButton} onPress={() => setRedeemOpen(true)}>
@@ -166,6 +206,7 @@ export default function BinderScreen() {
                   key={card.id}
                   card={card}
                   owned={ownedIds.includes(card.id)}
+                  onLockedPress={onLockedCardPress}
                 />
               ))}
             </View>
@@ -205,7 +246,8 @@ export default function BinderScreen() {
               </Pressable>
             </View>
             <Text style={styles.dialogBody}>
-              Enter the 8-character code from your physical card pack.
+              Enter the 8-character code from your physical card pack. Scratch
+              codes unlock Super Rare and Legendary digital twins.
             </Text>
             <TextInput
               style={styles.codeInput}
@@ -267,14 +309,14 @@ function ChampionHero({
           <Icon
             color={group.unlocked ? theme.color : '#000000'}
             size={64}
-            style={!group.unlocked ? { opacity: 0.5 } : undefined}
+            style={!group.unlocked ? { opacity: 0.2 } : undefined}
           />
         )}
         {!group.unlocked && <View style={styles.heroVeil} />}
         {!group.unlocked && (
           <View style={styles.heroLockOverlay}>
             <Lock color={colors.muted} size={18} />
-            <Text style={styles.heroLockText}>Unlock via physical cards</Text>
+            <Text style={styles.heroLockText}>Unlock via Physical Cards</Text>
           </View>
         )}
       </View>
@@ -316,43 +358,65 @@ function ChampionHero({
 
 // ── Set sub-card (collectible beneath each champion) ─────────────────────────
 
-function SubCard({ card, owned }: { card: Card; owned: boolean }) {
+function SubCard({
+  card,
+  owned,
+  onLockedPress,
+}: {
+  card: Card;
+  owned: boolean;
+  onLockedPress: (card: Card) => void;
+}) {
   const rarityColor = RARITY_COLORS[card.rarity];
-  return (
-    <View
-      style={[
-        styles.subCard,
-        { borderColor: owned ? rarityColor : colors.border },
-        !owned && styles.subCardLocked,
-      ]}
-    >
-      {owned ? (
-        <>
-          <Sparkles color={rarityColor} size={18} />
-          <Text style={styles.subCardName} numberOfLines={2}>
-            {card.name}
-          </Text>
-          <Text style={[styles.subCardRarity, { color: rarityColor }]}>
-            {card.rarity}
-          </Text>
-          <View style={styles.subStatRow}>
-            <View style={styles.statBadge}>
-              <Sword color={colors.red} size={10} />
-              <Text style={styles.subStatText}>{card.attack}</Text>
-            </View>
-            <View style={styles.statBadge}>
-              <Shield color={colors.accent} size={10} />
-              <Text style={styles.subStatText}>{card.defense}</Text>
-            </View>
+  const xpCost = XP_UNLOCK_COST[card.rarity];
+  const xpUnlockable = XP_UNLOCKABLE_RARITIES.includes(card.rarity);
+  const physicalOnly = PHYSICAL_ONLY_RARITIES.includes(card.rarity);
+
+  if (!owned) {
+    return (
+      <Pressable
+        style={[styles.subCard, { borderColor: colors.border }, styles.subCardLocked]}
+        onPress={() => onLockedPress(card)}
+        accessibilityRole="button"
+      >
+        <Lock color={colors.muted} size={18} />
+        <Text style={styles.subCardNameLocked}>???</Text>
+        <Text style={styles.subCardLockedHint}>{card.rarity}</Text>
+        {xpUnlockable && xpCost !== undefined && (
+          <View style={styles.unlockChip}>
+            <Zap color={colors.gold} size={10} />
+            <Text style={styles.unlockChipText}>{xpCost} XP</Text>
           </View>
-        </>
-      ) : (
-        <>
-          <Lock color={colors.muted} size={18} />
-          <Text style={styles.subCardNameLocked}>???</Text>
-          <Text style={styles.subCardLockedHint}>{card.rarity}</Text>
-        </>
-      )}
+        )}
+        {physicalOnly && (
+          <View style={[styles.unlockChip, styles.unlockChipPhysical]}>
+            <Ticket color={colors.gold} size={10} />
+            <Text style={styles.unlockChipPhysicalText}>Scratch code</Text>
+          </View>
+        )}
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={[styles.subCard, { borderColor: rarityColor }]}>
+      <Sparkles color={rarityColor} size={18} />
+      <Text style={styles.subCardName} numberOfLines={2}>
+        {card.name}
+      </Text>
+      <Text style={[styles.subCardRarity, { color: rarityColor }]}>
+        {card.rarity}
+      </Text>
+      <View style={styles.subStatRow}>
+        <View style={styles.statBadge}>
+          <Sword color={colors.red} size={10} />
+          <Text style={styles.subStatText}>{card.attack}</Text>
+        </View>
+        <View style={styles.statBadge}>
+          <Shield color={colors.accent} size={10} />
+          <Text style={styles.subStatText}>{card.defense}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -466,6 +530,20 @@ const styles = StyleSheet.create({
   subStatText: { color: colors.text, fontWeight: '800', fontSize: 9 },
   subCardNameLocked: { color: colors.muted, fontWeight: '800', fontSize: 12 },
   subCardLockedHint: { color: colors.muted, fontSize: 9 },
+  unlockChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    marginTop: 2,
+  },
+  unlockChipText: { color: colors.gold, fontSize: 9, fontWeight: '900' },
+  unlockChipPhysical: { borderColor: colors.border, backgroundColor: colors.surfaceAlt },
+  unlockChipPhysicalText: { color: colors.muted, fontSize: 8, fontWeight: '800' },
   arCard: {
     marginTop: 4,
     backgroundColor: colors.surfaceAlt,

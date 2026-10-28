@@ -85,6 +85,17 @@ export async function awardXp(xp: number): Promise<LocalPlayer> {
   return updated;
 }
 
+/**
+ * Spends XP locally (card unlocks). Returns the updated player, or null when
+ * the balance is insufficient. Local-only — remote spend reconciliation
+ * happens on the next award_xp sync.
+ */
+export async function spendXp(xp: number): Promise<LocalPlayer | null> {
+  const player = await loadPlayer();
+  if (player.total_xp < xp) return null;
+  return savePlayer({ ...player, total_xp: player.total_xp - xp });
+}
+
 // ── Card collection ──────────────────────────────────────────────────────────
 
 export async function loadOwnedCardIds(): Promise<string[]> {

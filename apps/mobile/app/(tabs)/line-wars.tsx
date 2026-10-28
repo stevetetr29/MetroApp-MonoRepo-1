@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   CalendarClock,
   Crown,
+  LogOut,
   ShieldCheck,
   Swords,
   TrendingUp,
@@ -99,6 +100,24 @@ export default function LineWarsScreen() {
     void loadStandings(city, updated.primary_line, updated.total_xp);
   };
 
+  const leaveLine = async () => {
+    const player = await loadPlayer();
+    const updated = await savePlayer({ ...player, primary_line: '' });
+    setMyLine('');
+    const userId = await getSessionUserId();
+    if (supabase && userId) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ primary_line: '' })
+          .eq('id', userId);
+      } catch {
+        // stored locally — syncs next session
+      }
+    }
+    void loadStandings(city, '', updated.total_xp);
+  };
+
   const maxXp = Math.max(...standings.map((s) => s.weekly_xp), 1);
   const myStanding = standings.find((s) => s.line_name === myLine);
   const events = LINE_EVENTS.filter((e) => e.city === city);
@@ -163,6 +182,14 @@ export default function LineWarsScreen() {
                     counts toward this)
                   </Text>
                 </View>
+                <Pressable
+                  style={styles.leaveButton}
+                  onPress={() => void leaveLine()}
+                  accessibilityRole="button"
+                >
+                  <LogOut color={colors.red} size={13} />
+                  <Text style={styles.leaveButtonText}>Switch</Text>
+                </Pressable>
               </View>
             )}
 
@@ -302,6 +329,17 @@ const styles = StyleSheet.create({
   factionBannerText: { flex: 1, gap: 3 },
   factionBannerTitle: { color: colors.text, fontSize: 15, fontWeight: '900' },
   factionBannerSub: { color: colors.muted, fontSize: 11, lineHeight: 16 },
+  leaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: colors.red,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  leaveButtonText: { color: colors.red, fontWeight: '800', fontSize: 10 },
   eventsHeader: {
     flexDirection: 'row',
     alignItems: 'center',

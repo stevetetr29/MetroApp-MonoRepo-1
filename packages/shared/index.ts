@@ -18,7 +18,7 @@ export const CITY_SHORT: Record<City, string> = {
 
 export type TaskType = 'photo_ai' | 'trivia' | 'step_count';
 export type TaskCadence = 'daily' | 'weekly' | 'monthly';
-export type CardRarity = 'Common' | 'Rare' | 'Epic' | 'Legendary';
+export type CardRarity = 'Common' | 'Rare' | 'Epic' | 'Super Rare' | 'Legendary';
 export type CheckInMethod = 'gps' | 'manual';
 
 // ── Database-mirrored entities ────────────────────────────────────────────────
@@ -151,30 +151,9 @@ export const LINE_FACTIONS: Record<City, string[]> = {
   'Rest of the World': ['Line A', 'Line B', 'Line C'],
 };
 
-/** Official line colors — MTA / Shanghai Metro palettes. */
-export const LINE_COLORS: Record<string, string> = {
-  // NYC MTA
-  '1': '#EE352E', '2': '#EE352E', '3': '#EE352E',
-  '4': '#00933C', '5': '#00933C', '6': '#00933C',
-  '7': '#B933AD',
-  'A': '#0039A6', 'C': '#0039A6', 'E': '#0039A6',
-  'B': '#FF6319', 'D': '#FF6319', 'F': '#FF6319', 'M': '#FF6319',
-  'G': '#6CBE45',
-  'J': '#996633', 'Z': '#996633',
-  'L': '#A7A9AC',
-  'N': '#FCCC0A', 'Q': '#FCCC0A', 'R': '#FCCC0A', 'W': '#FCCC0A',
-  'S': '#808183',
-  // Shanghai Metro
-  'Line 1': '#E4002B', 'Line 2': '#00A0E9', 'Line 3': '#F9D616',
-  'Line 4': '#6B2D90', 'Line 5': '#B07CC6', 'Line 6': '#D4017D',
-  'Line 7': '#F18A00', 'Line 8': '#009CDA', 'Line 9': '#8DC8E8',
-  'Line 10': '#C1A7E2', 'Line 11': '#76232F', 'Line 12': '#00A03E',
-  'Line 13': '#E877C4', 'Line 14': '#7C5830', 'Line 15': '#C4975F',
-  'Line 16': '#3BB44A', 'Line 17': '#D8C6A0', 'Line 18': '#008D86',
-  // Rest of the World
-  'Line A': '#E11D48', 'Line B': '#3B82F6', 'Line C': '#22C55E',
-};
-
+/** Official line colors — MTA / Shanghai Metro palettes.
+ *  Declared in src/data/transitRoutes.ts (re-exported below) to keep the
+ *  route dataset self-contained. */
 export interface LineEvent {
   id: string;
   city: City;
@@ -250,7 +229,32 @@ export const RARITY_COLORS: Record<CardRarity, string> = {
   Common: '#9CA3AF',
   Rare: '#3B82F6',
   Epic: '#A855F7',
+  'Super Rare': '#EC4899',
   Legendary: '#F59E0B',
+};
+
+/**
+ * Rarities obtainable through gameplay (XP / points / events / roulette /
+ * surprise packages). 'Super Rare' and 'Legendary' only come from physical
+ * scratch codes or champion-grade drops.
+ */
+export const XP_UNLOCKABLE_RARITIES: readonly CardRarity[] = [
+  'Common',
+  'Rare',
+  'Epic',
+] as const;
+
+/** Rarities that can only be unlocked with physical scratch codes. */
+export const PHYSICAL_ONLY_RARITIES: readonly CardRarity[] = [
+  'Super Rare',
+  'Legendary',
+] as const;
+
+/** XP cost to unlock an XP-unlockable card. */
+export const XP_UNLOCK_COST: Partial<Record<CardRarity, number>> = {
+  Common: 200,
+  Rare: 500,
+  Epic: 1200,
 };
 
 /** XP required per level — level N starts at N * XP_PER_LEVEL. */
@@ -282,3 +286,8 @@ export function distanceMeters(
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
+
+// ── Transit route datasets (map polylines) — see src/data/transitRoutes.ts ───
+// NOTE: placed at the bottom so LINE_COLORS is initialized before the
+// data module evaluates (it imports constants from this file).
+export * from './src/data/transitRoutes';

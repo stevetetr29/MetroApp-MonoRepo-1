@@ -4,7 +4,6 @@
  * Mirrors supabase/migrations seed rows.
  */
 import {
-  LINE_COLORS,
   LINE_FACTIONS,
   type Card,
   type City,
@@ -74,181 +73,6 @@ export const SEED_STATIONS: Station[] = [
   { id: 'st-row-harbor', name: 'Harbor Point', city: 'Rest of the World', line_name: 'Line C', latitude: 39.99, longitude: -74.005 },
   { id: 'st-row-stadium', name: 'Stadium', city: 'Rest of the World', line_name: 'Line C', latitude: 39.985, longitude: -74.015 },
 ];
-
-// ── Metro line polylines (official line colors) ───────────────────────────────
-
-export interface LineRoute {
-  line: string;
-  color: string;
-  coordinates: { latitude: number; longitude: number }[];
-}
-
-export const LINE_ROUTES: Record<City, LineRoute[]> = {
-  NYC: [
-    {
-      line: '1/2/3',
-      color: LINE_COLORS['1'],
-      coordinates: [
-        { latitude: 40.7939, longitude: -73.9723 }, // 96 St
-        { latitude: 40.7784, longitude: -73.9819 }, // 72 St
-        { latitude: 40.7682, longitude: -73.9819 }, // Columbus Circle
-        { latitude: 40.7553, longitude: -73.9877 }, // Times Sq
-        { latitude: 40.7504, longitude: -73.9912 }, // Penn
-        { latitude: 40.7397, longitude: -74.0003 }, // 14 St/6 Av
-        { latitude: 40.7102, longitude: -74.0076 }, // Fulton
-      ],
-    },
-    {
-      line: '4/5/6',
-      color: LINE_COLORS['4'],
-      coordinates: [
-        { latitude: 40.8041, longitude: -73.9374 }, // 125 St
-        { latitude: 40.7795, longitude: -73.9555 }, // 86 St
-        { latitude: 40.7626, longitude: -73.9676 }, // Lex 59
-        { latitude: 40.7527, longitude: -73.9772 }, // Grand Central
-        { latitude: 40.7359, longitude: -73.9911 }, // Union Sq
-        { latitude: 40.7131, longitude: -74.004 },  // Brooklyn Bridge
-        { latitude: 40.7102, longitude: -74.0076 }, // Fulton
-        { latitude: 40.6844, longitude: -73.9777 }, // Atlantic–Barclays
-      ],
-    },
-    {
-      line: '7',
-      color: LINE_COLORS['7'],
-      coordinates: [
-        { latitude: 40.7558, longitude: -74.0019 }, // Hudson Yards
-        { latitude: 40.7553, longitude: -73.9877 }, // Times Sq
-        { latitude: 40.7538, longitude: -73.981 },  // 5 Av
-        { latitude: 40.7527, longitude: -73.9772 }, // Grand Central
-        { latitude: 40.7466, longitude: -73.8913 }, // Jackson Hts
-        { latitude: 40.7596, longitude: -73.83 },   // Flushing–Main
-      ],
-    },
-    {
-      line: 'A/C/E',
-      color: LINE_COLORS['A'],
-      coordinates: [
-        { latitude: 40.7682, longitude: -73.9819 }, // Columbus Circle
-        { latitude: 40.7522, longitude: -73.9934 }, // Penn
-        { latitude: 40.7403, longitude: -74.0023 }, // 8 Av–14 St
-        { latitude: 40.7323, longitude: -74.0007 }, // W 4 St
-        { latitude: 40.7102, longitude: -74.0076 }, // Fulton
-      ],
-    },
-    {
-      line: 'B/D/F/M',
-      color: LINE_COLORS['B'],
-      coordinates: [
-        { latitude: 40.7538, longitude: -73.9834 }, // Bryant Park
-        { latitude: 40.7497, longitude: -73.9879 }, // Herald Sq
-        { latitude: 40.7397, longitude: -74.0003 }, // 14 St/6 Av
-        { latitude: 40.7323, longitude: -74.0007 }, // W 4 St
-      ],
-    },
-    {
-      line: 'N/Q/R/W',
-      color: LINE_COLORS['N'],
-      coordinates: [
-        { latitude: 40.7626, longitude: -73.9676 }, // Lex 59
-        { latitude: 40.7553, longitude: -73.9877 }, // Times Sq
-        { latitude: 40.7497, longitude: -73.9879 }, // Herald Sq
-        { latitude: 40.7359, longitude: -73.9911 }, // Union Sq
-        { latitude: 40.718, longitude: -74.0001 },  // Canal St
-        { latitude: 40.6844, longitude: -73.9777 }, // Atlantic–Barclays
-      ],
-    },
-    {
-      line: 'L',
-      color: LINE_COLORS['L'],
-      coordinates: [
-        { latitude: 40.7403, longitude: -74.0023 }, // 8 Av
-        { latitude: 40.7397, longitude: -74.0003 }, // 6 Av
-        { latitude: 40.7359, longitude: -73.9911 }, // Union Sq
-        { latitude: 40.7328, longitude: -73.9862 }, // 3 Av
-        { latitude: 40.7309, longitude: -73.9816 }, // 1 Av
-        { latitude: 40.7173, longitude: -73.9569 }, // Bedford
-      ],
-    },
-  ],
-  Shanghai: [
-    {
-      line: 'Line 1',
-      color: LINE_COLORS['Line 1'],
-      coordinates: [
-        { latitude: 31.2494, longitude: 121.4557 }, // Railway Station
-        { latitude: 31.2335, longitude: 121.469 },  // People's Square
-        { latitude: 31.217, longitude: 121.4574 },  // South Shaanxi
-        { latitude: 31.194, longitude: 121.4374 },  // Xujiahui
-        { latitude: 31.1544, longitude: 121.4297 }, // Shanghai South
-      ],
-    },
-    {
-      line: 'Line 2',
-      color: LINE_COLORS['Line 2'],
-      coordinates: [
-        { latitude: 31.1943, longitude: 121.3207 }, // Hongqiao
-        { latitude: 31.2185, longitude: 121.4164 }, // Zhongshan Park
-        { latitude: 31.2206, longitude: 121.4272 }, // Jiangsu Rd
-        { latitude: 31.2234, longitude: 121.4453 }, // Jing'an Temple
-        { latitude: 31.2297, longitude: 121.4599 }, // W Nanjing Rd
-        { latitude: 31.2335, longitude: 121.469 },  // People's Square
-        { latitude: 31.2406, longitude: 121.4839 }, // E Nanjing Rd
-        { latitude: 31.2386, longitude: 121.5014 }, // Lujiazui
-        { latitude: 31.2337, longitude: 121.5264 }, // Century Ave
-        { latitude: 31.2033, longitude: 121.5564 }, // Longyang Rd
-      ],
-    },
-    {
-      line: 'Line 10',
-      color: LINE_COLORS['Line 10'],
-      coordinates: [
-        { latitude: 31.1943, longitude: 121.3207 }, // Hongqiao
-        { latitude: 31.217, longitude: 121.4574 },  // South Shaanxi
-        { latitude: 31.2159, longitude: 121.4756 }, // Xintiandi
-        { latitude: 31.2273, longitude: 121.4922 }, // Yuyuan Garden
-        { latitude: 31.2406, longitude: 121.4839 }, // E Nanjing Rd
-      ],
-    },
-    {
-      line: 'Line 11',
-      color: LINE_COLORS['Line 11'],
-      coordinates: [
-        { latitude: 31.2206, longitude: 121.4272 }, // Jiangsu Rd
-        { latitude: 31.194, longitude: 121.4374 },  // Xujiahui
-        { latitude: 31.1528, longitude: 121.4822 }, // Oriental Sports
-        { latitude: 31.1493, longitude: 121.6688 }, // Disney Resort
-      ],
-    },
-  ],
-  'Rest of the World': [
-    {
-      line: 'Line A',
-      color: LINE_COLORS['Line A'],
-      coordinates: [
-        { latitude: 40.0, longitude: -74.0 },
-        { latitude: 40.005, longitude: -74.01 },
-        { latitude: 40.012, longitude: -74.02 },
-      ],
-    },
-    {
-      line: 'Line B',
-      color: LINE_COLORS['Line B'],
-      coordinates: [
-        { latitude: 39.99, longitude: -73.98 },
-        { latitude: 39.995, longitude: -73.99 },
-        { latitude: 40.008, longitude: -73.995 },
-      ],
-    },
-    {
-      line: 'Line C',
-      color: LINE_COLORS['Line C'],
-      coordinates: [
-        { latitude: 39.99, longitude: -74.005 },
-        { latitude: 39.985, longitude: -74.015 },
-      ],
-    },
-  ],
-};
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
 
@@ -391,17 +215,17 @@ export const SEED_CARDS: Card[] = [
   { id: 'cd-turnstile', name: 'Turnstile Guard', artwork_url: '', rarity: 'Common', attack: 10, defense: 15, description: 'Holds the line at the fare gates.', champion: 'Grand Central Dragon' },
   { id: 'cd-owl', name: 'Night Owl Conductor', artwork_url: '', rarity: 'Rare', attack: 24, defense: 26, description: 'Commands the last train out of Brooklyn.', champion: 'Grand Central Dragon' },
   { id: 'cd-wraith', name: 'Ghost Line Wraith', artwork_url: '', rarity: 'Epic', attack: 38, defense: 44, description: 'Haunts abandoned stations of the IND.', champion: 'Grand Central Dragon' },
-  { id: 'cd-dragon', name: 'Grand Central Dragon', artwork_url: '', rarity: 'Legendary', attack: 65, defense: 58, description: 'Sleeps beneath the celestial ceiling.', champion: 'Grand Central Dragon' },
+  { id: 'cd-dragon', name: 'Grand Central Dragon', artwork_url: '', rarity: 'Super Rare', attack: 65, defense: 58, description: 'Sleeps beneath the celestial ceiling.', champion: 'Grand Central Dragon' },
   // The Maglev Empress set (Shanghai)
   { id: 'cd-signal', name: 'Signal Keeper', artwork_url: '', rarity: 'Common', attack: 14, defense: 12, description: 'Keeps the lights green down the tunnel.', champion: 'The Maglev Empress' },
   { id: 'cd-sprite', name: 'Shanghai Sprite', artwork_url: '', rarity: 'Common', attack: 16, defense: 12, description: 'Darts between Line 2 carriages at dawn.', champion: 'The Maglev Empress' },
   { id: 'cd-bund', name: 'Bund Sentinel', artwork_url: '', rarity: 'Epic', attack: 45, defense: 40, description: 'Watches the river from the Bund promenade.', champion: 'The Maglev Empress' },
-  { id: 'cd-maglev', name: 'The Maglev Empress', artwork_url: '', rarity: 'Legendary', attack: 70, defense: 50, description: "Shanghai's 430 km/h sovereign of steel.", champion: 'The Maglev Empress' },
+  { id: 'cd-maglev', name: 'The Maglev Empress', artwork_url: '', rarity: 'Super Rare', attack: 70, defense: 50, description: "Shanghai's 430 km/h sovereign of steel.", champion: 'The Maglev Empress' },
   // Express Phantom set
   { id: 'cd-imp', name: 'Switchyard Imp', artwork_url: '', rarity: 'Common', attack: 11, defense: 10, description: 'Mischief on the crossovers, harmless to locals.', champion: 'Express Phantom' },
   { id: 'cd-midnight', name: 'Midnight Express', artwork_url: '', rarity: 'Rare', attack: 30, defense: 22, description: 'The train that never appears on the countdown clock.', champion: 'Express Phantom' },
   { id: 'cd-herald', name: 'Iron Herald', artwork_url: '', rarity: 'Epic', attack: 40, defense: 48, description: "Announces the Phantom's arrival in sparks.", champion: 'Express Phantom' },
-  { id: 'cd-phantom', name: 'Express Phantom', artwork_url: '', rarity: 'Rare', attack: 28, defense: 18, description: 'Skips every local stop. Catches nobody.', champion: 'Express Phantom' },
+  { id: 'cd-phantom', name: 'Express Phantom', artwork_url: '', rarity: 'Super Rare', attack: 55, defense: 42, description: 'Skips every local stop. Catches nobody.', champion: 'Express Phantom' },
 ];
 
 // ── Line Wars factions ────────────────────────────────────────────────────────
@@ -570,8 +394,9 @@ export function drawBoosterPack(catalog: Card[], count = 3): Card[] {
   const weights: Record<Card['rarity'], number> = {
     Common: 60,
     Rare: 25,
-    Epic: 12,
-    Legendary: 3,
+    Epic: 10,
+    'Super Rare': 4,
+    Legendary: 1,
   };
   const draw = (): Card => {
     const roll = Math.random() * 100;

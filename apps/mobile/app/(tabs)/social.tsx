@@ -1,5 +1,5 @@
 /**
- * /social — activity feed mockup.
+ * /(tabs)/social — activity feed tab.
  *
  * Shows rider activity posts (station check-ins, AI photo task completions,
  * booster pack pulls) with Facebook-style reactions and a comment drawer.
@@ -19,10 +19,8 @@ import {
   View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft,
   Flame,
   Gift,
   MapPin,
@@ -31,10 +29,9 @@ import {
   Send,
   ThumbsUp,
 } from 'lucide-react-native';
-import type { City } from '@metro/shared';
-import { colors } from '../lib/theme';
-import { SEED_FEED, type FeedPost } from '../lib/data';
-import { loadPlayer } from '../lib/player';
+import { colors } from '../../lib/theme';
+import { SEED_FEED, type FeedPost } from '../../lib/data';
+import { loadPlayer } from '../../lib/player';
 
 const FEED_STATE_KEY = 'metro:feed_state';
 
@@ -59,7 +56,6 @@ const KIND_META: Record<
 };
 
 export default function SocialScreen() {
-  const router = useRouter();
   const [feedState, setFeedState] = useState<FeedState>(EMPTY_STATE);
   const [username, setUsername] = useState('rider_local');
   const [commentTarget, setCommentTarget] = useState<FeedPost | null>(null);
@@ -116,11 +112,12 @@ export default function SocialScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
-          <ChevronLeft color={colors.text} size={24} />
-        </Pressable>
-        <Text style={styles.heading}>Rider Feed</Text>
-        <View style={styles.backButton} />
+        <View>
+          <Text style={styles.heading}>Rider Feed</Text>
+          <Text style={styles.subheading}>
+            Check-ins, verified tasks and pack pulls from riders near you
+          </Text>
+        </View>
       </View>
 
       <FlatList
@@ -309,8 +306,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  backButton: { width: 32, alignItems: 'flex-start' },
-  heading: { color: colors.text, fontSize: 20, fontWeight: '900' },
+  heading: { color: colors.text, fontSize: 28, fontWeight: '900' },
+  subheading: { color: colors.muted, fontSize: 12, marginTop: 4 },
   list: { paddingHorizontal: 16, paddingBottom: 32, gap: 14 },
   card: {
     backgroundColor: colors.surface,

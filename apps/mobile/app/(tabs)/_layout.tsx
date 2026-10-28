@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Album, ListChecks, Map, Swords, Trophy } from 'lucide-react-native';
+import { Album, ListChecks, Map, MessageCircle, Swords, Trophy } from 'lucide-react-native';
 import { colors } from '../../lib/theme';
 
 export default function TabLayout() {
@@ -38,6 +38,13 @@ export default function TabLayout() {
         options={{
           title: 'Binder',
           tabBarIcon: ({ color, size }) => <Album color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="social"
+        options={{
+          title: 'Feed',
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
         }}
       />
       <Tabs.Screen
